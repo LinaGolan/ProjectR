@@ -1,0 +1,730 @@
+---
+title: "projectR"
+output: html_document
+---
+
+#Loading packages
+```{r}
+install.packages("Rtools")
+install.packages("recipes")
+install.packages("parsnip")
+install.packages("workflows")
+install.packages("ggpmisc")
+install.packages("maps")
+install.packages("ggplot2")
+install.packages("tidyverse")
+install.packages("plyr")
+install.packages("corrplot")
+install.packages("ggpubr")
+install.packages("ggcorrplot")
+install.packages("party")
+install.packages('RColorBrewer')
+install.packages('partykit')
+install.packages('ggparty')
+install.packages('rsample')
+install.packages('Metrics')
+```
+
+```{r}
+library(Metrics)
+library(tidyverse)
+library(rsample)
+library(ggparty)
+library(partykit)
+library(maps)
+library(ggplot2)
+library(htmltools)
+library(plyr)
+library(corrplot)
+library(ggcorrplot)
+library(party)
+library(rattle)
+library(RColorBrewer)
+library(readxl)
+library(ggpmisc)
+library(dplyr)
+library(tidyverse)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data2015 = read_csv("C:/Users/MG/Desktop/data/data_2015.csv")
+data2016 = read_csv("C:/Users/MG/Desktop/data/data_2016.csv")
+data2017= read_csv("C:/Users/MG/Desktop/data/data_2017.csv")
+data2018 = read_csv("C:/Users/MG/Desktop/data/data_2018.csv")
+data2019 = read_csv("C:/Users/MG/Desktop/data/data_2019.csv")
+data2020= read_csv("C:/Users/MG/Desktop/data/data_2020.csv")
+```
+
+# Data preperation:
+
+```{r}
+Age15 = data2015 %>%
+  dplyr::filter(Age != 'Prefer not to disclose' & Age != '') %>%
+  dplyr::mutate(Age=replace(Age, Age == "20-24", "20-29"),
+         Age=replace(Age, Age == "25-29", "20-29"),
+         Age=replace(Age, Age == "30-34", "30-39"),
+         Age=replace(Age, Age == "35-39", "30-39"),
+         Year = "2015")
+
+Age20 = data2020 %>%
+  dplyr::filter(Age < 100 & Age > 12  & Age != '') %>%
+  dplyr::mutate(Age=replace(Age, Age <20, "< 20"),
+         Age=replace(Age, Age >=20 & Age <=29, "20-29"),         
+         Age=replace(Age, Age >=30 & Age <40, "30-39"),
+         Age=replace(Age, Age >=40 & Age <=50, "40-50"),
+         Age=replace(Age, Age >=51 & Age <=60, "51-60"),
+         Age=replace(Age, Age >60, "> 60"),
+         Year = "2020")
+```
+
+
+```{r}
+Age_Sex15 = Age15 %>%
+  dplyr::count(Age, Gender, Year) %>%
+  filter(Gender == 'Male' |
+         Gender == 'Female')
+
+Age_Sex20 = Age20 %>%
+  dplyr::count(Age, Gender, Year) %>%
+  filter(Gender == 'Man' |
+         Gender == 'Woman') %>%
+  dplyr::mutate(Gender=replace(Gender, Gender=="Man", "Male"),
+         Gender=replace(Gender, Gender == "Woman", "Female"))
+
+Age_Gender = Age_Sex15 %>% bind_rows(Age_Sex20)
+Age_Gender
+```
+
+```{r}
+ggplot(Age_Gender, aes(x= Age, y=n,  fill= Gender)) +
+  geom_bar(stat="identity", width=.7, position = "dodge") +
+  facet_grid(~Year) +
+  scale_x_discrete(limits = c("< 20", "20-29", "30-39", "40-50", "51-60", "> 60")) +
+  scale_fill_manual(values = c("coral", "darkseagreen")) +
+  theme_bw() +theme(strip.background =element_rect(fill="white"))+
+  labs(title = "Amount of female and male responders from diffrent age ranges", subtitle = "2015 VS. 2020")
+```
+
+
+```{r, warning=FALSE}
+Age_Salary15 = Age15 %>%
+  dplyr::rename("Employment" = "Employment Status") %>%
+  filter(Country == "United States"& Compensation!='Rather not say'& Age != "> 60"&
+         Compensation != "Unemployed"& Compensation != ""& Gender != "") %>%
+  filter(Employment == "Employed full-time" | Employment == "Freelance / Contractor") %>%
+  dplyr::mutate(Compensation=replace(Compensation, Compensation == "$20,000 - $40,000", "0-40K"),
+         Compensation=replace(Compensation, Compensation == "Less than $20,000", "0-40K"),
+         Compensation=replace(Compensation, Compensation == "$40,000 - $60,000", "40-80K"),
+         Compensation=replace(Compensation, Compensation == "$60,000 - $80,000", "40-80K"),
+         Compensation=replace(Compensation, Compensation == "$80,000 - $100,000", "80-120K"),
+         Compensation=replace(Compensation, Compensation == "$100,000 - $120,000", "80-120K"),
+         Compensation=replace(Compensation, Compensation == "$120,000 - $140,000", "120-160K"),
+         Compensation=replace(Compensation, Compensation == "$140,000 - $160,000", "120-160K"),
+         Compensation=replace(Compensation, Compensation == "More than $160,000", ">160K")) %>%
+  dplyr::rename(Salary = Compensation) %>%
+  dplyr::count(Age, Salary, Year, Gender) %>%
+  dplyr::mutate(perc = round((n / sum(n)),2))
+
+Age_Salary20 = Age20 %>% drop_na(ConvertedComp) %>% drop_na(Gender) %>%
+  filter(Country == "United States" & (Employment == "Employed full-time" | Employment == "Independent contractor, freelancer, or self-employed")) %>%
+  dplyr::mutate(ConvertedComp=replace(ConvertedComp, ConvertedComp < 40000, "0-40K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) >= 40000 & as.double(ConvertedComp) <= 80000, "40-80K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) > 80000 & as.double(ConvertedComp) <= 120000, "80-120K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) > 120000 & as.double(ConvertedComp) <= 160000, "120-160K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) >160000, ">160K")) %>%
+  dplyr::rename(Salary = ConvertedComp) %>%
+  dplyr::count(Age, Salary, Year, Gender) %>%
+  dplyr::mutate(perc = round((n / sum(n)),2))
+
+Age_Salary = Age_Salary15 %>% bind_rows(Age_Salary20)
+```
+
+```{r}
+Age_Sex15a = Age_Salary15 %>%
+  filter(Gender == 'Male' |
+         Gender == 'Female')
+
+Age_Sex20a = Age_Salary20 %>%
+  filter(Gender == 'Man' |
+         Gender == 'Woman') %>%
+  dplyr::mutate(Gender=replace(Gender, Gender=="Man", "Male"),
+         Gender=replace(Gender, Gender == "Woman", "Female"))
+Age_Sex_Salary = Age_Sex15a %>% bind_rows(Age_Sex20a) %>%
+  mutate(Salary = fct_relevel(Salary, "0-40K", "40-80K", "80-120K", "120-160K", ">160K"))
+```
+
+
+```{r, fig.width=9, fig.height=5, warning=FALSE}
+ggplot(Age_Sex_Salary, aes(x= Age, y=perc, fill= Gender, label = perc)) +
+  facet_grid(Salary~Year) +
+  geom_bar(stat="identity", width=.7, position = "dodge") +
+  scale_x_discrete(limits = c("< 20", "20-29", "30-39", "40-50", "51-60")) +
+  scale_y_continuous(labels=scales::percent) +
+  geom_text(aes(label = scales::percent(perc), y= perc ),position = position_dodge2(width = 0.7, preserve = "single"),size = 3, vjust=-0.5, hjust=0.4) +
+  theme_bw() + scale_fill_manual(values = c("coral", "darkseagreen")) +
+  labs(title = "Amount of responders from different age ranges in each salary range", subtitle = "Yearly salary in USD $, 2015 vs. 2020")
+```
+
+
+--------------------------NOIA-----------------------------
+#Prepering the Data
+```{r}
+data2015 = data2015 %>%  drop_na(Country)
+data2016 = data2016 %>%  drop_na(country)
+colnames(data2016)[which(names(data2016) == "country")] = "Country"
+data2017 = data2017 %>%  drop_na(Country)
+data2018 = data2018 %>%  drop_na(Country)
+data2019 = data2019 %>%  drop_na(Country)
+data2020 = data2020 %>%  drop_na(Country)
+```
+
+##Countries of the respondents on Stack Overflow site
+```{r}
+country_2015 = distinct(data2015,Country)
+country_2015 = nrow(country_2015)
+country_2020 = distinct(data2020, Country)
+country_2020 = nrow(country_2020)
+Count_counry = c(country_2015, country_2020)
+Years = c('2015','2020')
+data_country = data.frame(Years, Count_counry)
+ggplot(data_country, aes(x=Years, y=Count_counry,fill=Years)) + geom_bar(stat = "identity", width=0.6) + geom_text(aes(label = Count_counry, vjust = 13))+ scale_fill_manual(values=c("hotpink4","pink"))+labs(title="Countries of the respondents on Stack Overflow site",subtitle="Comparison between 2015 and 2020", x="Years", y="Amounnt of countries")+theme_light()
+```
+
+#Count of the respondents on Stack Overflow site
+```{r}
+Respond_2015 = nrow(data2015)
+Respond_2020 = nrow(data2020)
+Count_respond = c(Respond_2015, Respond_2020)
+Years = c('2015','2020')
+data_Respond = data.frame(Years, Count_respond)
+ggplot(data_Respond, aes(x=Years, y=Count_respond,fill=Years)) + geom_bar(stat = "identity", width=0.6)+ scale_fill_manual(values=c("hotpink4","pink"))+labs(title="Count of the respondents on Stack Overflow site",subtitle="Comparison between 2015 and 2020", x="Years", y="Amounnt of respondents")+theme_light()  + geom_text(aes(label = Count_respond, vjust = 5))
+```
+#Count of respondents from each country
+```{r}
+count_by_country2015 = data2015 %>% group_by(Country) %>% summarise('count_country' = count(Country))
+count_by_country2015 = as.data.frame(count_by_country2015$count_country)
+count_by_country2015
+
+count_by_country2020 = data2020 %>% group_by(Country) %>% summarise('count_country' = count(Country))
+count_by_country2020 = as.data.frame(count_by_country2020$count_country)
+count_by_country2020$x[count_by_country2020$x == "United States"] = "USA"
+count_by_country2020$x[count_by_country2020$x == "United Kingdom"] = "UK"
+count_by_country2020$x[count_by_country2020$x == "Russian Federation"] = "Russia"
+count_by_country2020$x[count_by_country2020$x == "Venezuela, Bolivarian Republic of..."] = "Venezuela"
+count_by_country2020
+```
+
+#Count of respondents from each country - decreasing by count
+```{r}
+data_sorted2015 = count_by_country2015[order(count_by_country2015$freq,decreasing = TRUE), ]
+head2015 = head(data_sorted2015, 5)
+
+data_sorted2020 = count_by_country2020[order(count_by_country2020$freq,decreasing = TRUE), ]
+head2020 = head(data_sorted2020, 5)
+```
+
+#World map of the respondents on Stack Overflow site
+```{r}
+world_map = map_data("world")
+ggplot(count_by_country2020) +
+  geom_map(
+    dat = world_map, map = world_map, aes(map_id = region),
+    fill = "white", color = "#7f7f7f", size = 0.25
+  ) +
+  geom_map(map = world_map, aes(map_id = x, fill=freq), size = 0.25) +
+  scale_fill_gradient(low = "#fff7bc", high = "#cc4c02") +
+  expand_limits(x = world_map$long, y = world_map$lat)+ 
+    scale_fill_viridis_c(option = "plasma", trans = "sqrt") +labs(title="World map of the respondents on Stack Overflow site",subtitle="Based on the count of responders in each country by 2020") 
+```
+
+
+
+##    מבחני השערות
+Prepering the data
+```{r}
+count_by_country2015['Year'] = 2015
+count_by_country2016 = data2016 %>% group_by(Country) %>% summarise('count_country' = count(Country))
+count_by_country2016 = as.data.frame(count_by_country2016$count_country)
+count_by_country2016['Year'] = 2016
+count_by_country2017 = data2017 %>% group_by(Country) %>% summarise('count_country' = count(Country))
+count_by_country2017 = as.data.frame(count_by_country2017$count_country)
+count_by_country2017['Year'] = 2017
+count_by_country2018 = data2018 %>% group_by(Country) %>% summarise('count_country' = count(Country))
+count_by_country2018 = as.data.frame(count_by_country2018$count_country)
+count_by_country2018['Year'] = 2018
+count_by_country2019 = data2019 %>% group_by(Country) %>% summarise('count_country' = count(Country))
+count_by_country2019 = as.data.frame(count_by_country2019$count_country)
+count_by_country2019['Year'] = 2019
+count_by_country2020['Year'] = 2020
+```
+
+
+# Getting info about Israel
+```{r}
+israel_2015 = filter(count_by_country2015, x == "Israel")
+israel_2016 = filter(count_by_country2016, x == "Israel")
+israel_2017 = filter(count_by_country2017, x == "Israel")
+israel_2018 = filter(count_by_country2018, x == "Israel")
+israel_2019 = filter(count_by_country2019, x == "Israel")
+israel_2020 = filter(count_by_country2020, x == "Israel")
+all_years = rbind(israel_2015, israel_2016,israel_2017,israel_2018,israel_2019,israel_2020)
+```
+
+# Israel t-test
+```{r}
+t.test(x=all_years$freq, y=NULL, alternative=c("two.sided"),mu=192, paired=FALSE, var.equal=FALSE, conf.level=0.95)
+```
+
+קורלציה
+```{r}
+country_2015 = distinct(data2015,Country)
+country_2015 = nrow(country_2015)
+country_2016 = distinct(data2016,Country)
+country_2016 = nrow(country_2016)
+country_2017 = distinct(data2017,Country)
+country_2017 = nrow(country_2017)
+country_2018 = distinct(data2018,Country)
+country_2018 = nrow(country_2018)
+country_2019 = distinct(data2019,Country)
+country_2019 = nrow(country_2019)
+country_2020 = distinct(data2020, Country)
+country_2020 = nrow(country_2020)
+Count_counry = c(country_2015,country_2016,country_2017,country_2018,country_2019, country_2020)
+Years = c('2015','2016','2017','2018','2019','2020')
+data_country_corr = data.frame(Years, Count_counry)
+```
+
+```{r}
+Respond_2015 = nrow(data2015)
+Respond_2016 = nrow(data2016)
+Respond_2017 = nrow(data2017)
+Respond_2018 = nrow(data2018)
+Respond_2019 = nrow(data2019)
+Respond_2020 = nrow(data2020)
+Count_respond = c(Respond_2015,Respond_2016,Respond_2017,Respond_2018,Respond_2019, Respond_2020)
+data_Respond_corr = data.frame(Years, Count_respond)
+```
+
+```{r}
+join = join(data_Respond_corr,data_country_corr)
+join$Years <- as.numeric(as.character(join$Years))
+```
+
+```{r}
+r <- cor(join, use="complete.obs")
+ggcorrplot(r, hc.order = TRUE, type = "lower",lab = TRUE)
+```
+עץ החלטה
+```{r}
+tree2020 = data2020 %>% drop_na(Age) %>%  drop_na(ConvertedComp) %>%  drop_na(Gender)  %>%  drop_na(YearsCodePro) %>%  drop_na(EdLevel)  %>% 
+  filter(Country == "United States" & (Employment == "Employed full-time" | Employment == "Independent contractor, freelancer, or self-employed"))
+
+tree2020$ConvertedComp<- as.numeric(as.character(tree2020$ConvertedComp))
+
+
+levels(tree2020$CompTotal) <- c(levels(tree2020$ConvertedComp), "0") 
+tree2020$CompTotal[tree2020$ConvertedComp<40000]  <- 20000
+tree2020$CompTotal[tree2020$ConvertedComp >= 40000 & tree2020$ConvertedComp <= 80000]  <- 60000
+tree2020$CompTotal[tree2020$ConvertedComp > 80000 & tree2020$ConvertedComp <= 120000]  <- 100000
+tree2020$CompTotal[tree2020$ConvertedComp> 120000 & tree2020$ConvertedComp <= 160000]  <- 140000
+tree2020$CompTotal[tree2020$ConvertedComp >160000]  <- 180000
+
+
+tree2020 = filter(tree2020, Gender == "Woman" | Gender == 'Man')
+tree2020$Gender[tree2020$Gender == 'Woman'] = 1
+tree2020$Gender[tree2020$Gender== 'Man'] = 0
+
+tree2020$Degree <- tree2020$EdLevel
+levels(tree2020$Degree) <- c(levels(tree2020$Degree), "1")
+tree2020[tree2020$EdLevel %in% c("Bachelor’s degree (B.A., B.S., B.Eng., etc.)", "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)", "Professional degree (JD, MD, etc.)","Other doctoral degree (Ph.D., Ed.D., etc.)"), "Degree"] <- "1"
+tree2020$Degree[tree2020$Degree != "1"] = "0"
+
+tree2020$YearsCodePro<- as.numeric(as.character(tree2020$YearsCodePro))
+tree2020$Gender<- as.numeric(as.character(tree2020$Gender))
+tree2020$Degree<- as.numeric(as.character(tree2020$Degree))
+tree2020$ConvertedComp<- as.numeric(as.character(tree2020$ConvertedComp))
+
+finaltree2020 = tree2020[, c("Degree", "Age", "CompTotal","YearsCodePro","Gender")]
+finaltree2020['Year'] = 2020
+
+finaltree2020_split <- initial_split(finaltree2020) 
+finaltree2020_train <- training(finaltree2020_split)
+finaltree2020_test <- testing(finaltree2020_split)
+
+```
+
+#Getting the decision tree image -> to the computer folder where this file is stored
+```{r}
+# Give the chart file a name.
+png(file = "decision_tree2020.png",res=200, height=6, width=8, , units="in")
+
+# Create the tree.
+output.tree <- ctree(CompTotal ~ Gender+Degree, data = finaltree2020_train)
+
+# Plot the tree.
+plot(output.tree)
+
+
+# Save the file.
+dev.off()
+```
+
+```{r}
+tree2015 =  data2015 
+tree2015 = rename(tree2015, replace = c("Employment Status" = "EmploymentStatus"))
+tree2015 = rename(tree2015, replace = c("Years IT / Programming Experience" = "YearsCodePro"))
+tree2015 = rename(tree2015, replace = c("Compensation: midpoint" = "CompTotal"))
+tree2015 = rename(tree2015, replace = c("Training & Education: BS in CS" = "Bachelor"))
+tree2015 = rename(tree2015, replace = c("Training & Education: Masters in CS"= "Master"))
+tree2015 = rename(tree2015, replace = c("Training & Education: PhD in CS" = "cs"))
+tree2015 = tree2015%>%  drop_na(Age) %>%  drop_na(CompTotal) %>%  drop_na(Gender)  %>%  drop_na(YearsCodePro)
+
+tree2015 =  tree2015 %>%  filter(Country == "United States" & Compensation!='Rather not say' & Compensation != "Unemployed" & Compensation != "") %>% filter(EmploymentStatus == "Employed full-time" | EmploymentStatus == "Freelance / Contractor")
+
+
+tree2015$CompTotal<- as.numeric(as.character(tree2015$CompTotal))
+tree2020$CompTotal[tree2015$CompTotal<40000]  <- 20000
+tree2020$CompTotal[tree2015$CompTotal >= 40000 & tree2020$CompTotal <= 80000]  <- 60000
+tree2020$CompTotal[tree2015$CompTotal > 80000 & tree2020$CompTotal <= 120000]  <- 100000
+tree2020$CompTotal[tree2015$CompTotal> 120000 & tree2020$CompTotal <= 160000]  <- 140000
+tree2020$CompTotal[tree2015$CompTotal >160000]  <- 180000
+
+
+tree2015 = filter(tree2015, Gender == "Female" | Gender == 'Male')
+tree2015$Gender[tree2015$Gender == 'Female'] = 1
+tree2015$Gender[tree2015$Gender== 'Male'] = 0
+
+
+tree2015$Degree = 0
+tree2015$Degree <- with(tree2015, ifelse( !is.na(Bachelor)| !is.na(Master) | !is.na(cs), "1", "0"))
+
+tree2015$Age = substr(tree2015$Age , start = 1 , stop = 2 )
+tree2015$YearsCodePro = substr(tree2015$YearsCodePro , start = 1 , stop = 2 )
+
+tree2015$Age<- as.numeric(as.character(tree2015$Age))
+tree2015$Gender<- as.numeric(as.character(tree2015$Gender))
+tree2015$Degree<- as.numeric(as.character(tree2015$Degree))
+tree2015$YearsCodePro<- as.numeric(as.character(tree2015$YearsCodePro))
+tree2015$CompTotal<- as.numeric(as.character(tree2015$CompTotal))
+
+
+finaltree2015 = tree2015[, c("Degree", "Age", "CompTotal","YearsCodePro","Gender")]
+
+finaltree2015['Year'] = 2015
+finaltree2015 = finaltree2015 %>% drop_na()
+
+finaltree2015_split <- initial_split(finaltree2015) 
+finaltree2015_train <- training(finaltree2015_split)
+finaltree2015_test <- testing(finaltree2015_split)
+
+```
+#Getting the decision tree image -> to the computer folder where this file is stored
+```{r}
+# Give the chart file a name.
+png(file = "decision_tree2015.png",res=200, height=6, width=8, , units="in")
+
+# Create the tree.
+output.tree <- ctree(CompTotal ~ Gender+Degree, data = finaltree2015_train)
+
+# Plot the tree.
+plot(output.tree)
+
+# Save the file.
+dev.off()
+```
+
+
+
+```{r}
+df_merge_train <- full_join(finaltree2020_train, finaltree2015_train)
+df_merge_train = df_merge_train%>% drop_na()
+```
+
+#Getting the decision tree image -> to the computer folder where this file is stored
+```{r}
+# Give the chart file a name.
+png(file = "Tree.png",res=200, height=5, width=11, , units="in")
+
+# Create the tree.
+  output.tree <- ctree(CompTotal ~Year+Gender+Degree, data = df_merge_train)
+
+# Plot the tree.
+plot(output.tree)
+
+# Save the file.
+dev.off()
+```
+
+
+```{r}
+df_merge_test <- full_join(finaltree2020_test , finaltree2015_test)
+df_merge_test  = df_merge_test %>% drop_na()
+```
+
+```{r}
+t_pred = predict(output.tree,df_merge_test)
+t = df_merge_test$Degree
+```
+
+
+```{r}
+rmse(t, t_pred)
+```
+
+
+
+---------------------REUT-------------------
+```{r}
+
+data2015work <- data2015  %>% filter(`Employment Status` == 'Employed full-time')
+data2020work <- subset(data2020,Employment == 'Employed full-time' )
+```
+
+```{r}
+data15new <- data.frame(Experience = data2015work$`Years IT / Programming Experience`,
+                          Country = data2015work$Country,
+                          Occupation = data2015work$Occupation,
+                          Masters_CS = data2015work$`Training & Education: Masters in CS`,
+                          BS_CS = data2015work$`Training & Education: BS in CS`,
+                          College = data2015work$`Training & Education: Some college, but no CS degree`,
+                          salary = data2015work$`Compensation: midpoint`,
+                          Gender = data2015work$Gender)
+data15new <- data15new %>% filter(salary != 'Rather not say')
+```
+
+```{r}
+data20new <- data.frame(Country = data2020work$Country, 
+                        Occupation = data2020work$DevType,
+                        Gender = data2020work$Gender,
+                        Education = data2020work$EdLevel,
+                        Experience = data2020work$YearsCodePro,
+                        salary = data2020work$ConvertedComp)
+
+data20new <- data20new %>% na.omit() %>% subset(salary != "" & !is.nan(salary) & salary != Inf & salary != "Unemployed" & Occupation != "Student") 
+```
+
+
+```{r}
+data15new <- data15new %>%
+  mutate(ExperienceAvg = case_when(
+    endsWith(Experience, "2 years") ~  1.5,
+    endsWith(Experience, "5 years") ~ 3.5,
+    endsWith(Experience, "10 years") ~ 9,
+    endsWith(Experience, "+ years") ~ 12,
+    endsWith(Experience, "1 years") ~ 0.5
+    ))
+```
+
+```{r}
+data15new <- data15new %>%
+  mutate(Education = case_when(
+    endsWith(Masters_CS, "Masters Degree in Computer Science (or related field)") ~  "Master",
+    endsWith(BS_CS, "Bachelor of Science in Computer Science (or related field)") ~ "BS",
+    endsWith(College, "Some college coursework in Computer Science (or related field) but no degree") ~ "College"
+    )) %>% replace_na(list(`Education` = "No formal education"))
+
+```
+
+```{r}
+data15new <- subset(data15new, select = -c(Masters_CS,BS_CS,College,Experience))
+```
+
+```{r}
+data15new <- data15new %>% na.omit() %>%
+  filter(salary != "" & !is.nan(salary) & salary != Inf & salary != "Unemployed"  & Occupation != "Student")
+```
+
+```{r}
+data20new <- data20new %>%
+  mutate(EducationGroup = case_when(
+    startsWith(Education, "Master") ~  "Master",
+    startsWith(Education, "Bachelor") ~ "BS",
+    startsWith(Education, "Some college") ~ "College")) %>%
+  replace_na(list(`EducationGroup` = "No formal education"))
+```
+
+```{r}
+data15new <- data15new %>%
+  mutate(OccupationGroup = case_when(
+    endsWith(Occupation, "Back-end web developer") ~ "Developers",
+    endsWith(Occupation, "Business intelligence or data warehousing expert") ~  "Data",
+    endsWith(Occupation, "Data scientist") ~  "Data",
+    endsWith(Occupation, "Designer ") ~  "Designers",
+    endsWith(Occupation, "Desktop developer") ~  "Developers",
+    endsWith(Occupation, "Developer with a statistics or mathematics background") ~  "Data",
+    endsWith(Occupation, "DevOps ") ~  "Developers",
+    endsWith(Occupation, "Embedded application developer") ~  "Developers",
+    endsWith(Occupation, "Enterprise level services developer") ~  "Developers",
+    endsWith(Occupation, "Executive (VP of Eng., CTO, CIO, etc.)") ~  "Developers",
+    endsWith(Occupation, "Front-end web developer") ~  "Developers",
+    endsWith(Occupation, "Full-stack web developer") ~  "Developers",
+    endsWith(Occupation, "Graphics programmer") ~  "Designers",
+    endsWith(Occupation, "Growth hacker") ~  "Developers",
+    endsWith(Occupation, "Machine learning developer") ~  "Data",
+    endsWith(Occupation, "Mobile developer ") ~  "Developers",
+    endsWith(Occupation, "Mobile developer - Android") ~  "Developers",
+    endsWith(Occupation, "Mobile developer - iOS") ~  "Developers",
+    endsWith(Occupation, "Product manager") ~  "QA",
+    endsWith(Occupation, "Quality Assurance") ~  "QA",
+    endsWith(Occupation, "System administrator") ~  "QA"))
+```
+
+```{r}
+data20new <- data20new %>%
+  mutate(OccupationGroup = case_when(
+    startsWith(Occupation, "Dev") ~ "Developers",
+    startsWith(Occupation, "Data") ~ "Data",
+    startsWith(Occupation, "Designer") ~ "Designers",
+    startsWith(Occupation, "Academic") ~ "Academics",
+    startsWith(Occupation, "System") ~ "QA",
+    startsWith(Occupation, "Scientist") ~ "Academics",
+    startsWith(Occupation, "Engineer") ~ "Developers",
+    startsWith(Occupation, "Educator") ~ "Academics",
+    startsWith(Occupation, "Product") ~ "QA",
+    startsWith(Occupation, "Senior") ~ "Developers",
+    ))%>% replace_na(list(`OccupationGroup` = "Developers"))
+```
+
+```{r}
+data20new$Experience[data20new$Experience == "Less than 1 year"] <- "1"
+```
+
+```{r}
+data20new$Experience <- as.numeric(data20new$Experience)
+```
+
+```{r}
+avg_exp2020 = mean(data20new$Experience,na.rm = TRUE)
+data20new <- data20new %>% replace_na(list(`Experience` = avg_exp2020))
+data15new$salary <- as.numeric(data15new$salary)
+```
+
+
+```{r}
+data2015US <- data15new %>% subset(Country == "United States")
+data2020US <- data20new %>% subset(Country == "United States")
+```
+
+
+```{r}
+male2015 <- data2015US %>% subset(Gender == "Male") %>% subset(select = -c(Gender, Occupation, Country))
+female2015 <- data2015US %>% subset(Gender == "Female") %>% subset(select = -c(Gender, Occupation, Country))
+```
+
+```{r}
+male2020 <- data2020US %>% subset(Gender == "Man") %>% subset(select = -c(Gender, Occupation, Country,Education))
+female2020 <- data2020US %>% subset(Gender == "Woman") %>% subset(select = -c(Gender, Occupation, Country,Education))
+```
+
+
+```{r}
+set.seed(1122)
+#split 2015
+male2015_split <- initial_split(male2015)
+female2015_split <- initial_split(female2015)
+#split 2020
+male2020_split <- initial_split(male2020)
+female2020_split <- initial_split(female2020)
+#man2015
+man_train2015 <- training(male2015_split)
+man_test2015 <- testing(male2015_split)
+#woman 2015
+woman_train2015 <- training(female2015_split)
+woman_test2015 <- testing(female2015_split)
+#man 2020
+man_train2020 <- training(male2020_split)
+man_test2020 <- testing(male2020_split)
+#woman 2020
+woman_train2020 <- training(female2020_split)
+woman_test2020 <- testing(female2020_split)
+```
+
+```{r}
+#male salary 2015 model
+malesalary2015 <- lm(salary~ExperienceAvg+OccupationGroup+Education, data = man_train2015)
+summary(malesalary2015)
+```
+```{r}
+predmale2015 <- predict(malesalary2015, newdata = man_test2015)
+avg_pred_male2015 = mean(predmale2015,na.rm = TRUE)
+predmale2015 <- predmale2015 %>% replace_na(avg_pred_male2015)
+rmse <- rmse(predmale2015, man_test2015$salary)
+c(RMSE = rmse, R2=summary(malesalary2015)$r.squared)
+```
+
+
+```{r}
+#female salary 2015 model
+femalesalary2015 <- lm(salary~ExperienceAvg+OccupationGroup+Education, data = woman_train2015)
+summary(femalesalary2015)
+```
+```{r}
+predfemale2015 <- predict(femalesalary2015, newdata = woman_test2015)
+avg_pred_female2015 = mean(predfemale2015,na.rm = TRUE)
+predfemale2015 <- predfemale2015 %>% replace_na(avg_pred_female2015)
+rmse <- rmse(predfemale2015, woman_test2015$salary)
+c(RMSE = rmse, R2=summary(femalesalary2015)$r.squared)
+```
+
+
+
+```{r}
+#male salary 2020 model
+malesalary2020 <- lm(salary~Experience+OccupationGroup+EducationGroup, data = man_train2020)
+summary(malesalary2020)
+```
+```{r}
+predmale2020 <- predict(malesalary2020, newdata = man_test2020)
+rmse <- rmse(predmale2020, man_test2020$salary)
+c(RMSE = rmse, R2=summary(malesalary2020)$r.squared)
+```
+
+
+```{r}
+#female salary 2020 model
+femalesalary2020 <- lm(salary~Experience+OccupationGroup+EducationGroup, data = woman_train2020)
+summary(femalesalary2020)
+```
+
+```{r}
+predfemale2020 <- predict(femalesalary2020, newdata = woman_test2020)
+rmse <- rmse(predfemale2020, woman_test2020$salary)
+c(RMSE = rmse, R2=summary(femalesalary2020)$r.squared)
+```
+
+
+```{r}
+data2015US <- subset(data2015US, Gender == "Male" |Gender == "Female")
+data2020US <- subset(data2020US, Gender == "Man" |Gender == "Woman")
+data2015US["Year"] <- 2015
+data2020US["Year"] <- 2020
+plotReg2015 <- data2015US %>% subset(select = c(Gender, salary,ExperienceAvg,Year))
+plotReg2020 <- data2020US %>% subset(select = c(Gender, salary,Experience,Year))
+plotReg2015 <- rename(plotReg2015, replace = c("ExperienceAvg" = "Experience"))
+merged_year = plotReg2015 %>% bind_rows(plotReg2020) %>% mutate(Gender=replace(Gender, Gender=="Man", "Male")) %>% mutate(Gender=replace(Gender, Gender == "Woman", "Female"))
+
+
+```
+
+
+```{r, fig.width=5, fig.height=2}
+ggplot(data = merged_year, aes(x = Experience, y = salary, colour = Gender)) +
+  stat_poly_line() +
+  stat_poly_eq(aes(label = paste(after_stat(eq.label),
+                                 after_stat(rr.label), sep = "*\", \"*")))+
+  #scale_color_manual(labels = c("Female", "Male"),values = c( "#FF9999","#33CC66"))+
+  facet_grid(~Year)+
+  labs(
+    x= "Experience")+
+  xlim(0,12.5)
+```
+
+
+
+
+
+
