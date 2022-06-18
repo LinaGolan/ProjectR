@@ -1,0 +1,253 @@
+---
+title: "projectR"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data_2015 = read.csv("C:/Users/MG/Desktop/data/data_2015.csv")
+data_2020 = read.csv("C:/Users/MG/Desktop/data/data_2020.csv")
+```
+
+# Data preperation:
+
+```{r}
+Age15 = data_2015 %>%
+  filter(Age != 'Prefer not to disclose' & Age != '') %>%
+  mutate(Age=replace(Age, Age == "20-24", "20-29"),
+         Age=replace(Age, Age == "25-29", "20-29"),
+         Age=replace(Age, Age == "30-34", "30-39"),
+         Age=replace(Age, Age == "35-39", "30-39"),
+         Year = "2015")
+
+Age20 = data_2020 %>%
+  filter(Age < 100 & Age > 12  & Age != '') %>%
+  mutate(Age=replace(Age, Age <20, "< 20"),
+         Age=replace(Age, Age >=20 & Age <=29, "20-29"),         
+         Age=replace(Age, Age >=30 & Age <40, "30-39"),
+         Age=replace(Age, Age >=40 & Age <=50, "40-50"),
+         Age=replace(Age, Age >=51 & Age <=60, "51-60"),
+         Age=replace(Age, Age >60, "> 60"),
+         Year = "2020")
+```
+
+```{r}
+Age_Country15 = Age15 %>%
+    count(Country, Age, Year)
+
+Age_Country20 = Age20 %>%
+    count(Country, Age, Year)
+
+Age_Country = Age_Country15 %>% bind_rows(Age_Country20) %>%
+    filter(Country == 'United States' |
+           Country == 'India' |
+           Country == 'Canada' |
+           Country == 'Poland' |
+           Country == 'Israel')
+```
+
+
+
+```{r, fig.width=9, fig.height=5}
+ggplot(Age_Country, aes(x= Age, weight=n, fill= Country)) +
+  facet_grid(Country ~ Year) +
+  geom_bar(width = 0.5) +
+  scale_x_discrete(limits = c("< 20", "20-29", "30-39", "40-50", "51-60", "> 60")) +
+  theme_bw() +
+  scale_fill_manual(values = c("lightblue", "cornflowerblue", "hotpink3", "yellow3","darkseagreen")) +theme(plot.margin = margin(0,0,0,0, "cm"))+
+  labs(title = "Amount of responders from diffrent age ranges in 5 diffrent countries", subtitle = "2015 VS. 2020")
+```
+
+```{r}
+Age_Sex15 = Age15 %>%
+  count(Age, Gender, Year) %>%
+  filter(Gender == 'Male' |
+         Gender == 'Female')
+
+Age_Sex20 = Age20 %>%
+  count(Age, Gender, Year) %>%
+  filter(Gender == 'Man' |
+         Gender == 'Woman') %>%
+  mutate(Gender=replace(Gender, Gender=="Man", "Male"),
+         Gender=replace(Gender, Gender == "Woman", "Female"))
+
+Age_Gender = Age_Sex15 %>% bind_rows(Age_Sex20)
+```
+
+```{r}
+ggplot(Age_Gender, aes(x= Age, y=n,  fill= Gender)) +
+  geom_bar(stat="identity", width=.7, position = "dodge") +
+  facet_grid(~Year) +
+  scale_x_discrete(limits = c("< 20", "20-29", "30-39", "40-50", "51-60", "> 60")) +
+  scale_fill_manual(values = c("coral", "darkseagreen")) +
+  theme_bw() +theme(strip.background =element_rect(fill="white"))+
+  labs(title = "Amount of female and male responders from diffrent age ranges", subtitle = "2015 VS. 2020")
+```
+
+
+```{r}
+Age_Salary15 = Age15 %>%
+  filter(Country == "United States" & Compensation!='Rather not say' & Age != "> 60" & Compensation != "Unemployed" & Compensation != "") %>%
+  filter(Employment.Status == "Employed full-time" | Employment.Status == "Freelance / Contractor") %>%
+  mutate(Compensation=replace(Compensation, Compensation == "$20,000 - $40,000", "0-40K"),
+         Compensation=replace(Compensation, Compensation == "Less than $20,000", "0-40K"),
+         Compensation=replace(Compensation, Compensation == "$40,000 - $60,000", "40-80K"),
+         Compensation=replace(Compensation, Compensation == "$60,000 - $80,000", "40-80K"),
+         Compensation=replace(Compensation, Compensation == "$80,000 - $100,000", "80-120K"),
+         Compensation=replace(Compensation, Compensation == "$100,000 - $120,000", "80-120K"),
+         Compensation=replace(Compensation, Compensation == "$120,000 - $140,000", "120-160K"),
+         Compensation=replace(Compensation, Compensation == "$140,000 - $160,000", "120-160K"),
+         Compensation=replace(Compensation, Compensation == "More than $160,000", ">160K")) %>%
+  rename(Salary = Compensation, Employment = Employment.Status) %>%
+  count(Age, Salary, Year, Gender)
+
+Age_Salary20 = Age20 %>% drop_na(ConvertedComp) %>%
+  filter(Country == "United States" & (Employment == "Employed full-time" | Employment == "Independent contractor, freelancer, or self-employed")) %>%
+  mutate(ConvertedComp=replace(ConvertedComp, ConvertedComp < 40000, "0-40K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) >= 40000 & as.double(ConvertedComp) <= 80000, "40-80K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) > 80000 & as.double(ConvertedComp) <= 120000, "80-120K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) > 120000 & as.double(ConvertedComp) <= 160000, "120-160K"),
+         ConvertedComp=replace(ConvertedComp, as.double(ConvertedComp) >160000, ">160K")) %>%
+  rename(Salary = ConvertedComp) %>%
+  count(Age, Salary, Year, Gender)
+
+Age_Salary = Age_Salary15 %>% bind_rows(Age_Salary20)
+```
+```{r}
+Age_Sex15a = Age_Salary15 %>%
+  filter(Gender == 'Male' |
+         Gender == 'Female')
+
+Age_Sex20a = Age_Salary20 %>%
+  filter(Gender == 'Man' |
+         Gender == 'Woman') %>%
+  mutate(Gender=replace(Gender, Gender=="Man", "Male"),
+         Gender=replace(Gender, Gender == "Woman", "Female"))
+Age_Sex_Salary = Age_Sex15a %>% bind_rows(Age_Sex20a)
+Age_Sex_Salary
+```
+
+
+```{r, fig.width=9, fig.height=5, warning=FALSE}
+ggplot(Age_Sex_Salary, aes(x= Age, y=n, fill= Gender, label = n)) +
+  facet_grid(Salary~Year) +
+  geom_bar(stat="identity", width=.7, position = "dodge") +
+  scale_x_discrete(limits = c("< 20", "20-29", "30-39", "40-50", "51-60")) +
+  geom_text(position = position_dodge2(width = 0.7, preserve = "single"),size = 3, vjust=0.5, hjust=0.5) +
+  theme_bw() +
+  labs(title = "Amount of responders from diffrent age ranges in each salary range", subtitle = "Yearly salary in USD $, 2015 vs. 2020")
+```
+
+```{r, fig.width=9, fig.height=4}
+#  scale_y_discrete(limits = c("0-40K", "40-80K", "80-120K", "120-160K", ">60K")) +
+ggplot(Age_Salary, aes(x= Age, weight=n, fill= Salary)) +
+  facet_grid(Salary~Year) +
+  geom_bar(width = 0.5) +
+  scale_x_discrete(limits = c("< 20", "20-29", "30-39", "40-50", "51-60")) +
+  theme_bw() + scale_fill_manual(values = c("lightblue", "cornflowerblue", "hotpink3", "yellow3","darkseagreen")) +
+  labs(title = "Amount of responders from diffrent age ranges in each salary range", subtitle = "Yearly salary in USD $, 2015 vs. 2020")
+```
+```{r}
+Age_S15 = Age15 %>%
+  filter(Country == "United States" & Age != "> 60") %>%
+  filter(Employment.Status == "I'm a student" | Employment.Status == "Unemployed") %>%
+  rename(Employment = Employment.Status) %>%
+  count(Age, Employment, Year)
+
+Age_S20 = Age20 %>%
+  filter(Country == "United States") %>%
+  filter(Employment == "Student" | Employment == "Not employed, but looking for work" |
+         Employment == "Not employed, and not looking for work") %>%
+  count(Age, Employment, Year)
+
+Age_Salary_S = Age_S15 %>% bind_rows(Age_S20)
+```
+
+```{r}
+ggplot(Age_Salary_S, aes(x= Age, weight=n, fill= Age)) +
+  facet_grid(~Year) +
+  geom_bar(width = 0.5) +
+  scale_x_discrete(limits = c("< 20", "20-29", "30-39", "40-50", "51-60")) +
+  theme_bw() + scale_fill_manual(values = c("lightblue", "cornflowerblue", "hotpink3", "yellow3","darkseagreen")) +
+  labs(title = "Amount of unemployed responders from diffrent age ranges ", subtitle = "2015 vs. 2020")
+```
+
+#ignore---------------------------------------------------------------------------------------------------------------------
+
+```{r}
+ggplot(Age_Salary15, aes(group=Age, y=n, x=Compensation, color = Age)) +
+geom_point(stat='summary', fun=sum) +
+scale_x_discrete(limits = c("0-40K", "40-80K", "80-120K", "120-160K", "More than 160K"))+
+stat_summary(fun=sum, geom="line", size = 0.8)
+```
+
+```{r}
+data20 %>% 
+  filter(Age20 < 100 & Age20 > 12  & Salary20!='' & Age20 != '') %>%
+  mutate(Salary20=replace(Salary20, Salary20 < 40000, "<40K"),
+         Salary20=replace(Salary20, Salary20 >= 40000 & Salary20 <= 80000, "40-80K"),
+         Salary20=replace(Salary20, Salary20 > 80000 & Salary20 <= 120000, "80-120K"))%>%
+  filter(as.double(Salary20) > 80000 & as.double(Salary20) <= 120000)
+```
+
+```{r}
+data20 = 
+         Age20=replace(Age20, Age20 <20, "<20"),
+         Age20=replace(Age20, Age20 >=20 & Age20 <=29, "20-29"),         
+         Age20=replace(Age20, Age20 >=30 & Age20 <40, "30-39"),
+         Age20=replace(Age20, Age20 >=40 & Age20 <=50, "40-50"),
+         Age20=replace(Age20, Age20 >=51 & Age20 <=60, "51-60"),
+         Age20=replace(Age20, Age20 >60, ">60")) %>%
+  count(Age20, Salary20)
+
+data20
+```
+
+```{r}
+ggplot(data20, aes(x=Salary20, y=n, group=Age20, color = Age20)) +
+geom_point(stat='summary', fun=sum) +
+  scale_x_discrete(limits = c("Unemployed", "0-40K", "40-80K", "80-120K", "120-160K", "More than 160K"))+
+stat_summary(fun=sum, geom="line", size = 0.8)
+```
+
+```{r}
+data20 = filter(data20, x20 != 279 & x20 > 12)
+ggplot(data20,aes(x=x20 ,y = n, color = a20)) +
+  geom_point(alpha = 0.7, size = 2)+
+  theme_minimal()+
+  labs(x='Age', y='Salary', title='')
+```
+
+
+```{r}
+ggplot(data15a, aes(group=Age15, y=n, x=Salary15, color = Age15)) +
+geom_point(stat='summary', fun=sum) +
+stat_summary(fun=sum, geom="line", size = 0.8)
+```
+
+
+```{r}
+ggplot(data15a, aes(x=Age15, y=n, group=Salary15, color = Salary15)) +
+geom_point(stat='summary', fun=sum) +
+stat_summary(fun=sum, geom="line", size = 0.8)
+```
+
+```{r}
+ggplot(data15,aes(x=Age15 ,y=n, color = Salary15)) +
+  geom_point(alpha = 0.7, size = 2.4) +
+  geom_point(stat='summary', fun.y=sum) +
+  stat_summary(fun.y=sum, geom="line")
+  theme_minimal() +
+  scale_color_manual(values = c("violetred", "yellow1", "tomato1",
+                                "springgreen3", "steelblue2","red2",
+                                "navy", "springgreen", "goldenrod4"))+
+  labs(x='X Values', y='Y Values', title='Linear Regression Plot')
+```
