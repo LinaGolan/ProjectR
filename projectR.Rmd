@@ -51,12 +51,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-data2015 = read_csv("C:/Users/MG/Desktop/data/data_2015.csv")
-data2016 = read_csv("C:/Users/MG/Desktop/data/data_2016.csv")
-data2017= read_csv("C:/Users/MG/Desktop/data/data_2017.csv")
-data2018 = read_csv("C:/Users/MG/Desktop/data/data_2018.csv")
-data2019 = read_csv("C:/Users/MG/Desktop/data/data_2019.csv")
-data2020= read_csv("C:/Users/MG/Desktop/data/data_2020.csv")
+data2015 = read_csv(###place path to the data of 2015 here###)
+data2016 = read_csv(###place path to the data of 2016 here###)
+data2017= read_csv(###place path to the data of 2017 here###)
+data2018 = read_csv(###place path to the data of 2018 here###)
+data2019 = read_csv(###place path to the data of 2019 here###)
+data2020= read_csv(###place path to the data of 2020 here###)
 ```
 
 # Data preperation:
@@ -170,7 +170,7 @@ ggplot(Age_Sex_Salary, aes(x= Age, y=perc, fill= Gender, label = perc)) +
 ```
 
 
---------------------------NOIA-----------------------------
+--------------------------Country-----------------------------
 #Prepering the Data
 ```{r}
 data2015 = data2015 %>%  drop_na(Country)
@@ -319,6 +319,7 @@ r <- cor(join, use="complete.obs")
 ggcorrplot(r, hc.order = TRUE, type = "lower",lab = TRUE)
 ```
 עץ החלטה
+-----------------------Salary & Education & Gender------------------------
 ```{r}
 tree2020 = data2020 %>% drop_na(Age) %>%  drop_na(ConvertedComp) %>%  drop_na(Gender)  %>%  drop_na(YearsCodePro) %>%  drop_na(EdLevel)  %>% 
   filter(Country == "United States" & (Employment == "Employed full-time" | Employment == "Independent contractor, freelancer, or self-employed"))
@@ -332,7 +333,6 @@ tree2020$CompTotal[tree2020$ConvertedComp >= 40000 & tree2020$ConvertedComp <= 8
 tree2020$CompTotal[tree2020$ConvertedComp > 80000 & tree2020$ConvertedComp <= 120000]  <- 100000
 tree2020$CompTotal[tree2020$ConvertedComp> 120000 & tree2020$ConvertedComp <= 160000]  <- 140000
 tree2020$CompTotal[tree2020$ConvertedComp >160000]  <- 180000
-
 
 tree2020 = filter(tree2020, Gender == "Woman" | Gender == 'Man')
 tree2020$Gender[tree2020$Gender == 'Woman'] = 1
@@ -437,8 +437,6 @@ plot(output.tree)
 dev.off()
 ```
 
-
-
 ```{r}
 df_merge_train <- full_join(finaltree2020_train, finaltree2015_train)
 df_merge_train = df_merge_train%>% drop_na()
@@ -459,7 +457,6 @@ plot(output.tree)
 dev.off()
 ```
 
-
 ```{r}
 df_merge_test <- full_join(finaltree2020_test , finaltree2015_test)
 df_merge_test  = df_merge_test %>% drop_na()
@@ -470,14 +467,12 @@ t_pred = predict(output.tree,df_merge_test)
 t = df_merge_test$Degree
 ```
 
-
 ```{r}
 rmse(t, t_pred)
 ```
 
 
-
----------------------REUT-------------------
+---------------------Gender & Salary & Experience & Occupation & Education ---------------------------
 ```{r}
 
 data2015work <- data2015  %>% filter(`Employment Status` == 'Employed full-time')
@@ -506,7 +501,6 @@ data20new <- data.frame(Country = data2020work$Country,
 
 data20new <- data20new %>% na.omit() %>% subset(salary != "" & !is.nan(salary) & salary != Inf & salary != "Unemployed" & Occupation != "Student") 
 ```
-
 
 ```{r}
 data15new <- data15new %>%
@@ -603,12 +597,10 @@ data20new <- data20new %>% replace_na(list(`Experience` = avg_exp2020))
 data15new$salary <- as.numeric(data15new$salary)
 ```
 
-
 ```{r}
 data2015US <- data15new %>% subset(Country == "United States")
 data2020US <- data20new %>% subset(Country == "United States")
 ```
-
 
 ```{r}
 male2015 <- data2015US %>% subset(Gender == "Male") %>% subset(select = -c(Gender, Occupation, Country))
@@ -619,7 +611,6 @@ female2015 <- data2015US %>% subset(Gender == "Female") %>% subset(select = -c(G
 male2020 <- data2020US %>% subset(Gender == "Man") %>% subset(select = -c(Gender, Occupation, Country,Education))
 female2020 <- data2020US %>% subset(Gender == "Woman") %>% subset(select = -c(Gender, Occupation, Country,Education))
 ```
-
 
 ```{r}
 set.seed(1122)
@@ -656,7 +647,6 @@ rmse <- rmse(predmale2015, man_test2015$salary)
 c(RMSE = rmse, R2=summary(malesalary2015)$r.squared)
 ```
 
-
 ```{r}
 #female salary 2015 model
 femalesalary2015 <- lm(salary~ExperienceAvg+OccupationGroup+Education, data = woman_train2015)
@@ -670,8 +660,6 @@ rmse <- rmse(predfemale2015, woman_test2015$salary)
 c(RMSE = rmse, R2=summary(femalesalary2015)$r.squared)
 ```
 
-
-
 ```{r}
 #male salary 2020 model
 malesalary2020 <- lm(salary~Experience+OccupationGroup+EducationGroup, data = man_train2020)
@@ -682,7 +670,6 @@ predmale2020 <- predict(malesalary2020, newdata = man_test2020)
 rmse <- rmse(predmale2020, man_test2020$salary)
 c(RMSE = rmse, R2=summary(malesalary2020)$r.squared)
 ```
-
 
 ```{r}
 #female salary 2020 model
@@ -696,7 +683,6 @@ rmse <- rmse(predfemale2020, woman_test2020$salary)
 c(RMSE = rmse, R2=summary(femalesalary2020)$r.squared)
 ```
 
-
 ```{r}
 data2015US <- subset(data2015US, Gender == "Male" |Gender == "Female")
 data2020US <- subset(data2020US, Gender == "Man" |Gender == "Woman")
@@ -706,10 +692,7 @@ plotReg2015 <- data2015US %>% subset(select = c(Gender, salary,ExperienceAvg,Yea
 plotReg2020 <- data2020US %>% subset(select = c(Gender, salary,Experience,Year))
 plotReg2015 <- rename(plotReg2015, replace = c("ExperienceAvg" = "Experience"))
 merged_year = plotReg2015 %>% bind_rows(plotReg2020) %>% mutate(Gender=replace(Gender, Gender=="Man", "Male")) %>% mutate(Gender=replace(Gender, Gender == "Woman", "Female"))
-
-
 ```
-
 
 ```{r, fig.width=5, fig.height=2}
 ggplot(data = merged_year, aes(x = Experience, y = salary, colour = Gender)) +
@@ -722,9 +705,3 @@ ggplot(data = merged_year, aes(x = Experience, y = salary, colour = Gender)) +
     x= "Experience")+
   xlim(0,12.5)
 ```
-
-
-
-
-
-
