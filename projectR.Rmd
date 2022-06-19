@@ -81,7 +81,7 @@ Age20 = data2020 %>%
          Year = "2020")
 ```
 
-
+#plotting Gender, Age plot
 ```{r}
 Age_Sex15 = Age15 %>%
   dplyr::count(Age, Gender, Year) %>%
@@ -109,7 +109,7 @@ ggplot(Age_Gender, aes(x= Age, y=n,  fill= Gender)) +
   labs(title = "Amount of female and male responders from diffrent age ranges", subtitle = "2015 VS. 2020")
 ```
 
-
+#Plotting Age, Salary plot
 ```{r, warning=FALSE}
 Age_Salary15 = Age15 %>%
   dplyr::rename("Employment" = "Employment Status") %>%
@@ -156,8 +156,7 @@ Age_Sex20a = Age_Salary20 %>%
 Age_Sex_Salary = Age_Sex15a %>% bind_rows(Age_Sex20a) %>%
   mutate(Salary = fct_relevel(Salary, "0-40K", "40-80K", "80-120K", "120-160K", ">160K"))
 ```
-
-
+#plotting Age, Salary, Year, Gender
 ```{r, fig.width=9, fig.height=5, warning=FALSE}
 ggplot(Age_Sex_Salary, aes(x= Age, y=perc, fill= Gender, label = perc)) +
   facet_grid(Salary~Year) +
