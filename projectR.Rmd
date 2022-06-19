@@ -190,7 +190,12 @@ country_2020 = nrow(country_2020)
 Count_counry = c(country_2015, country_2020)
 Years = c('2015','2020')
 data_country = data.frame(Years, Count_counry)
-ggplot(data_country, aes(x=Years, y=Count_counry,fill=Years)) + geom_bar(stat = "identity", width=0.6) + geom_text(aes(label = Count_counry, vjust = 13))+ scale_fill_manual(values=c("hotpink4","pink"))+labs(title="Countries of the respondents on Stack Overflow site",subtitle="Comparison between 2015 and 2020", x="Years", y="Amounnt of countries")+theme_light()
+ggplot(data_country, aes(x=Years, y=Count_counry,fill=Years)) +
+geom_bar(stat = "identity", width=0.6) +
+geom_text(aes(label = Count_counry, vjust = 13))+
+scale_fill_manual(values=c("hotpink4","pink"))+
+labs(title="Countries of the respondents on Stack Overflow site",subtitle="Comparison between 2015 and 2020", x="Years", y="Amounnt of countries")+
+theme_light()
 ```
 
 #Count of the respondents on Stack Overflow site
@@ -200,7 +205,13 @@ Respond_2020 = nrow(data2020)
 Count_respond = c(Respond_2015, Respond_2020)
 Years = c('2015','2020')
 data_Respond = data.frame(Years, Count_respond)
-ggplot(data_Respond, aes(x=Years, y=Count_respond,fill=Years)) + geom_bar(stat = "identity", width=0.6)+ scale_fill_manual(values=c("hotpink4","pink"))+labs(title="Count of the respondents on Stack Overflow site",subtitle="Comparison between 2015 and 2020", x="Years", y="Amounnt of respondents")+theme_light()  + geom_text(aes(label = Count_respond, vjust = 5))
+
+ggplot(data_Respond, aes(x=Years, y=Count_respond,fill=Years)) +
+geom_bar(stat = "identity", width=0.6) +
+scale_fill_manual(values=c("hotpink4","pink"))+
+labs(title="Count of the respondents on Stack Overflow site",subtitle="Comparison between 2015 and 2020", x="Years", y="Amounnt of respondents")+
+theme_light() +
+geom_text(aes(label = Count_respond, vjust = 5))
 ```
 #Count of respondents from each country
 ```{r}
