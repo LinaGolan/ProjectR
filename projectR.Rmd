@@ -480,6 +480,7 @@ data2020work <- subset(data2020,Employment == 'Employed full-time' )
 ```
 
 ```{r}
+# Creating new data frame to 2015
 data15new <- data.frame(Experience = data2015work$`Years IT / Programming Experience`,
                           Country = data2015work$Country,
                           Occupation = data2015work$Occupation,
@@ -492,6 +493,7 @@ data15new <- data15new %>% filter(salary != 'Rather not say')
 ```
 
 ```{r}
+# Creating new data frame to 2020
 data20new <- data.frame(Country = data2020work$Country, 
                         Occupation = data2020work$DevType,
                         Gender = data2020work$Gender,
@@ -503,6 +505,7 @@ data20new <- data20new %>% na.omit() %>% subset(salary != "" & !is.nan(salary) &
 ```
 
 ```{r}
+#change `Experience` column from character to numeric
 data15new <- data15new %>%
   mutate(ExperienceAvg = case_when(
     endsWith(Experience, "2 years") ~  1.5,
@@ -514,6 +517,7 @@ data15new <- data15new %>%
 ```
 
 ```{r}
+#dividing to education groups
 data15new <- data15new %>%
   mutate(Education = case_when(
     endsWith(Masters_CS, "Masters Degree in Computer Science (or related field)") ~  "Master",
@@ -524,15 +528,18 @@ data15new <- data15new %>%
 ```
 
 ```{r}
+#remove unnecessarily columns
 data15new <- subset(data15new, select = -c(Masters_CS,BS_CS,College,Experience))
 ```
 
 ```{r}
+#remove missing values
 data15new <- data15new %>% na.omit() %>%
   filter(salary != "" & !is.nan(salary) & salary != Inf & salary != "Unemployed"  & Occupation != "Student")
 ```
 
 ```{r}
+#dividing to education groups
 data20new <- data20new %>%
   mutate(EducationGroup = case_when(
     startsWith(Education, "Master") ~  "Master",
@@ -542,6 +549,7 @@ data20new <- data20new %>%
 ```
 
 ```{r}
+#dividing to occupation groups
 data15new <- data15new %>%
   mutate(OccupationGroup = case_when(
     endsWith(Occupation, "Back-end web developer") ~ "Developers",
@@ -568,6 +576,7 @@ data15new <- data15new %>%
 ```
 
 ```{r}
+#dividing to occupation groups
 data20new <- data20new %>%
   mutate(OccupationGroup = case_when(
     startsWith(Occupation, "Dev") ~ "Developers",
@@ -584,35 +593,42 @@ data20new <- data20new %>%
 ```
 
 ```{r}
+#character to integer
 data20new$Experience[data20new$Experience == "Less than 1 year"] <- "1"
 ```
 
 ```{r}
+#chage `Experience` column to numeric
 data20new$Experience <- as.numeric(data20new$Experience)
 ```
 
 ```{r}
+#raplace NA with average
 avg_exp2020 = mean(data20new$Experience,na.rm = TRUE)
 data20new <- data20new %>% replace_na(list(`Experience` = avg_exp2020))
 data15new$salary <- as.numeric(data15new$salary)
 ```
 
 ```{r}
+#filter- United States only
 data2015US <- data15new %>% subset(Country == "United States")
 data2020US <- data20new %>% subset(Country == "United States")
 ```
 
 ```{r}
+#dividing to 2 data sets: male and female
 male2015 <- data2015US %>% subset(Gender == "Male") %>% subset(select = -c(Gender, Occupation, Country))
 female2015 <- data2015US %>% subset(Gender == "Female") %>% subset(select = -c(Gender, Occupation, Country))
 ```
 
 ```{r}
+#dividing to 2 data sets: male and female
 male2020 <- data2020US %>% subset(Gender == "Man") %>% subset(select = -c(Gender, Occupation, Country,Education))
 female2020 <- data2020US %>% subset(Gender == "Woman") %>% subset(select = -c(Gender, Occupation, Country,Education))
 ```
 
 ```{r}
+#split all data sets to train and test for the model
 set.seed(1122)
 #split 2015
 male2015_split <- initial_split(male2015)
@@ -640,6 +656,7 @@ malesalary2015 <- lm(salary~ExperienceAvg+OccupationGroup+Education, data = man_
 summary(malesalary2015)
 ```
 ```{r}
+# RMSE and R^2 calculation
 predmale2015 <- predict(malesalary2015, newdata = man_test2015)
 avg_pred_male2015 = mean(predmale2015,na.rm = TRUE)
 predmale2015 <- predmale2015 %>% replace_na(avg_pred_male2015)
@@ -653,6 +670,7 @@ femalesalary2015 <- lm(salary~ExperienceAvg+OccupationGroup+Education, data = wo
 summary(femalesalary2015)
 ```
 ```{r}
+# RMSE and R^2 calculation
 predfemale2015 <- predict(femalesalary2015, newdata = woman_test2015)
 avg_pred_female2015 = mean(predfemale2015,na.rm = TRUE)
 predfemale2015 <- predfemale2015 %>% replace_na(avg_pred_female2015)
@@ -666,6 +684,7 @@ malesalary2020 <- lm(salary~Experience+OccupationGroup+EducationGroup, data = ma
 summary(malesalary2020)
 ```
 ```{r}
+# RMSE and R^2 calculation
 predmale2020 <- predict(malesalary2020, newdata = man_test2020)
 rmse <- rmse(predmale2020, man_test2020$salary)
 c(RMSE = rmse, R2=summary(malesalary2020)$r.squared)
@@ -678,12 +697,14 @@ summary(femalesalary2020)
 ```
 
 ```{r}
+# RMSE and R^2 calculation
 predfemale2020 <- predict(femalesalary2020, newdata = woman_test2020)
 rmse <- rmse(predfemale2020, woman_test2020$salary)
 c(RMSE = rmse, R2=summary(femalesalary2020)$r.squared)
 ```
 
 ```{r}
+#create one data set for 2015 and 2020
 data2015US <- subset(data2015US, Gender == "Male" |Gender == "Female")
 data2020US <- subset(data2020US, Gender == "Man" |Gender == "Woman")
 data2015US["Year"] <- 2015
@@ -695,6 +716,7 @@ merged_year = plotReg2015 %>% bind_rows(plotReg2020) %>% mutate(Gender=replace(G
 ```
 
 ```{r, fig.width=5, fig.height=2}
+#plot linear regression formula: one for each gender in each year (2015 & 2020)
 ggplot(data = merged_year, aes(x = Experience, y = salary, colour = Gender)) +
   stat_poly_line() +
   stat_poly_eq(aes(label = paste(after_stat(eq.label),
