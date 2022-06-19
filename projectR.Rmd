@@ -479,7 +479,7 @@ df_merge_test  = df_merge_test %>% drop_na()
 
 ```{r}
 t_pred = predict(output.tree,df_merge_test)
-t = df_merge_test$Degree
+t = df_merge_test$CompTotal
 ```
 
 ```{r}
