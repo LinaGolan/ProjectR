@@ -393,7 +393,12 @@ tree2015 = rename(tree2015, replace = c("Training & Education: Masters in CS"= "
 tree2015 = rename(tree2015, replace = c("Training & Education: PhD in CS" = "cs"))
 tree2015 = tree2015%>%  drop_na(Age) %>%  drop_na(CompTotal) %>%  drop_na(Gender)  %>%  drop_na(YearsCodePro)
 
-tree2015 =  tree2015 %>%  filter(Country == "United States" & Compensation!='Rather not say' & Compensation != "Unemployed" & Compensation != "") %>% filter(EmploymentStatus == "Employed full-time" | EmploymentStatus == "Freelance / Contractor")
+tree2015 =  tree2015 %>%  filter(Country == "United States" &
+                                 Compensation!='Rather not say' &
+                                 Compensation != "Unemployed" &
+                                 Compensation != "") %>%
+  filter(EmploymentStatus == "Employed full-time" |
+         EmploymentStatus == "Freelance / Contractor")
 
 
 tree2015$CompTotal<- as.numeric(as.character(tree2015$CompTotal))
@@ -722,7 +727,10 @@ data2020US["Year"] <- 2020
 plotReg2015 <- data2015US %>% subset(select = c(Gender, salary,ExperienceAvg,Year))
 plotReg2020 <- data2020US %>% subset(select = c(Gender, salary,Experience,Year))
 plotReg2015 <- rename(plotReg2015, replace = c("ExperienceAvg" = "Experience"))
-merged_year = plotReg2015 %>% bind_rows(plotReg2020) %>% mutate(Gender=replace(Gender, Gender=="Man", "Male")) %>% mutate(Gender=replace(Gender, Gender == "Woman", "Female"))
+merged_year = plotReg2015 %>%
+bind_rows(plotReg2020) %>%
+mutate(Gender=replace(Gender, Gender=="Man", "Male")) %>%
+mutate(Gender=replace(Gender, Gender == "Woman", "Female"))
 ```
 
 ```{r, fig.width=5, fig.height=2}
